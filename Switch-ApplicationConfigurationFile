@@ -1,0 +1,47 @@
+{
+  "Id": "ActionTemplates-35",
+  "Name": "Switch-ConfigFile",
+  "Description": "Replaces the default Application configuration file with a pre-transformed application configuration file. Replaces the web.config file with web.#{environmentname}.config which was transformed during the build step.",
+  "ActionType": "Octopus.Script",
+  "Version": 4,
+  "Properties": {
+    "Octopus.Action.Script.ScriptBody": "function Switch-ConfigFile\r\n{\r\n    [CmdletBinding()]\r\n    [OutputType([int])]\r\n    Param\r\n    (\r\n        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true,Position=0)]\r\n        [string]$ApplicationDirectory = \"web.config\",\r\n        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$false,Position=1)]\r\n        [string]$OriginalConfigFilename = \"web.config\",\r\n        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$false,Position=2)]\r\n        [string]$ReplacementConfigFilename = \"web.release.config\"\r\n    )\r\n\r\n    Begin\r\n    {\r\n        Write-Host \"Checking the parameters required to replace the application config with a pre-transformed application config.\"\r\n        $oldErrorActionPreference = $ErrorActionPreference\r\n        $ErrorActionPreference = \"Continue\"\r\n        [int]$ExitCode = 0\r\n\r\n        $strApplicationDirectory = $ApplicationDirectory\r\n        if(!(Test-Path -Path $strApplicationDirectory -PathType Container))\r\n        {\r\n            $ExitCode = 1\r\n            Write-Error \"The path $strApplicationDirectory does not exists.\"\r\n        }\r\n\r\n        $strOriginalConfigFilename = Join-Path -Path $strApplicationDirectory -ChildPath $OriginalConfigFilename\r\n        if(!(Test-Path -Path $strOriginalConfigFilename -PathType Leaf))\r\n        {\r\n            $ExitCode = 1\r\n            Write-Error \"The file $strOriginalConfigFilename does not exists.\"\r\n        }\r\n        \r\n        $strReplacementConfigFilename = Join-Path -Path $strApplicationDirectory -ChildPath $ReplacementConfigFilename\r\n        if(!(Test-Path -Path $strReplacementConfigFilename -PathType Leaf))\r\n        {\r\n            $ExitCode = 1\r\n            Write-Error \"The file $strReplacementConfigFilename does not exists.\"\r\n        }\r\n\r\n        if($ExitCode -ne 0)\r\n        {\r\n            Exit $ExitCode\r\n        }\r\n    }\r\n    Process\r\n    {\r\n         try\r\n         {\r\n            Write-Host \"Attempting to replace $strOriginalConfigFilename with $strReplacementConfigFilename.\"\r\n            $flOriginalConfig = Get-Item -Path $strOriginalConfigFilename\r\n            Remove-Item $flOriginalConfig -Force\r\n\r\n            $flReplacementConfig = Get-Item -Path $strReplacementConfigFilename\r\n            Rename-Item $flReplacementConfig -NewName $OriginalConfigFilename\r\n         }\r\n         catch\r\n         {\r\n            Write-Error \"Failed to replace the orginal application config with the replacement application config.\"\r\n            $ExitCode = 1\r\n         }\r\n         finally\r\n         {\r\n            $ErrorActionPreference = $oldErrorActionPreference\r\n            Exit $ExitCode\r\n         }\r\n    }\r\n}\r\n\r\nSwitch-ConfigFile -ApplicationDirectory $ApplicationDirectory -OriginalConfigFilename $OriginalConfigFilename -ReplacementConfigFilename $ReplacementConfigFilename"
+  },
+  "SensitiveProperties": {},
+  "Parameters": [
+    {
+      "Name": "OriginalConfigFilename",
+      "Label": "Default Application Configuration File",
+      "HelpText": "",
+      "DefaultValue": "web.config",
+      "DisplaySettings": {
+        "Octopus.ControlType": "SingleLineText"
+      }
+    },
+    {
+      "Name": "ReplacementConfigFilename",
+      "Label": "Resultant Application Config",
+      "HelpText": "The name of the application configuration file to replace the original application configuration file with.",
+      "DefaultValue": "web.release.config",
+      "DisplaySettings": {
+        "Octopus.ControlType": "SingleLineText"
+      }
+    },
+    {
+      "Name": "ApplicationDirectory",
+      "Label": "Home Directory",
+      "HelpText": "The path to the applications home folder.",
+      "DefaultValue": "#{Octopus.Action[DeploymentStepName].Output.Package.InstallationDirectoryPath}",
+      "DisplaySettings": {
+        "Octopus.ControlType": "SingleLineText"
+      }
+    }
+  ],
+  "LastModifiedOn": "2014-10-29T12:44:41.915+00:00",
+  "LastModifiedBy": "tradmin@moonpig.com",
+  "$Meta": {
+    "ExportedAt": "2014-10-29T13:01:36.439Z",
+    "OctopusVersion": "2.5.10.567",
+    "Type": "ActionTemplate"
+  }
+}
