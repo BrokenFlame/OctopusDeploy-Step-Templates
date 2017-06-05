@@ -1,0 +1,11 @@
+ If((Get-WindowsFeature -Name RSAT-Clustering-Powershell) -ne $null)
+ {
+     if((Get-WindowsFeature -Name RSAT-Clustering-Powershell).Installed)
+     {
+         if ((Get-ClusterGroup | % { $_.OwnerNode.Name} | Where {$_ -ne $env:COMPUTERNAME} -eq $true)
+         {
+             Write-Host "$($env:ComputerName) is not the owner of the SQL Cluster"
+             Exit 0
+         }
+     }
+ }
