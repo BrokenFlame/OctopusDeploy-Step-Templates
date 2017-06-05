@@ -1,0 +1,60 @@
+{
+  "Id": "ActionTemplates-81",
+  "Name": "Backup-SqlServerDatabase",
+  "Description": "Backs up MSSQL databases on a SQL Instance.",
+  "ActionType": "Octopus.Script",
+  "Version": 6,
+  "CommunityActionTemplateId": null,
+  "Properties": {
+    "Octopus.Action.Script.Syntax": "PowerShell",
+    "Octopus.Action.Script.ScriptSource": "Inline",
+    "Octopus.Action.RunOnServer": "false",
+    "Octopus.Action.Script.ScriptBody": "function Backup-MSSQLDatabase\n{\n    [CmdletBinding()]\n    [OutputType([int])]\n    Param\n    (\n        # Param1 help description\n        [Parameter(Mandatory=$true,\n                   ValueFromPipelineByPropertyName=$true,\n                   Position=0)]\n        [string]$Instance,\n        [string]$DatabaseName,\n        [string]$BackupFile\n    )\n\n    Begin\n    {\n        [void][System.Reflection.Assembly]::LoadWithPartialName(\"Microsoft.SqlServer.SMO\")\n        [void][System.Reflection.Assembly]::LoadWithPartialName(\"Microsoft.SqlServer.SmoExtended\")\n        If(Test-Path -Path $BackupFile)\n        {\n            Get-Item -Path $BackupFile | Remove-Item -Force\n        }\n    }\n    Process\n    {\n        $svr = New-Object -TypeName Microsoft.SqlServer.Management.Smo.Server -ArgumentList \"$Instance\";\n        $database = $svr.Databases[\"$DatabaseName\"]\n        $dbname = $database.Name\n        $dbbk = New-Object -TypeName Microsoft.SqlServer.Management.Smo.Backup\n        $dbbk.Action = 'Database'\n        $dbbk.BackupSetDescription = \"Full backup of \" + $DatabaseName + \" \" + $(Get-Date)\n        $dbbk.BackupSetName = $dbname + \" Backup\"\n        $dbbk.Database = $dbname\n        $dbbk.MediaDescription = \"Disk\"\n        $dbbk.Devices.AddDevice($BackupFile, 'File')\n        $dbbk.SqlBackup($svr)\n    }\n    End\n    {\n    }\n}\n\n[string]$datestamp = Get-Date -format \"yyyyMMMdhhmm\"\n[string]$fileName = Join-Path -Path \"$BackupPath\" -ChildPath \"$Database\" \n[string]$filePath = \"$fileName-$datestamp.bak\"\nWrite-Verbose -Message \"Backing up database $Database to $filePath.\"\n\nBackup-MSSQLDatabase -Instance $instance -DatabaseName $Database -BackupFile $filePath\n\n\n",
+    "Octopus.Action.Script.ScriptFileName": null,
+    "Octopus.Action.Package.FeedId": null,
+    "Octopus.Action.Package.PackageId": null
+  },
+  "Parameters": [
+    {
+      "Id": "9fa7dd0c-a8c8-4e51-abb9-c9fb0568437b",
+      "Name": "instance",
+      "Type": "String",
+      "Label": "Instance Name",
+      "HelpText": "Use \"(local)\" for the default instance, or local\\<instancename> i.e local\\mssqlserver.",
+      "DefaultValue": "(local)",
+      "DisplaySettings": {
+        "Octopus.ControlType": "SingleLineText"
+      },
+      "Links": {}
+    },
+    {
+      "Id": "9f951756-4d8e-464d-9205-e0f1670d29cc",
+      "Name": "Database",
+      "Type": "String",
+      "Label": "Database Name",
+      "HelpText": "The name of the database to backup",
+      "DefaultValue": "MyDatabase",
+      "DisplaySettings": {
+        "Octopus.ControlType": "SingleLineText"
+      },
+      "Links": {}
+    },
+    {
+      "Id": "79f4d5ff-26dc-4ddd-ba49-2ba5f74ac01c",
+      "Name": "BackupPath",
+      "Type": "String",
+      "Label": "Backup Location",
+      "HelpText": "The location that there server has access to backup to.",
+      "DefaultValue": "C:\\Backups",
+      "DisplaySettings": {
+        "Octopus.ControlType": "SingleLineText"
+      },
+      "Links": {}
+    }
+  ],
+  "$Meta": {
+    "ExportedAt": "2017-06-05T13:07:12.245Z",
+    "OctopusVersion": "3.11.6",
+    "Type": "ActionTemplate"
+  }
+}
