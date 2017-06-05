@@ -1,0 +1,36 @@
+{
+  "Id": "ActionTemplates-41",
+  "Name": "Force HTTPS Redirect.",
+  "Description": "Force HTTPS Redirect on IIS websites where Url Rewriter is installed",
+  "ActionType": "Octopus.Script",
+  "Version": 14,
+  "CommunityActionTemplateId": null,
+  "Properties": {
+    "Octopus.Action.Script.Syntax": "PowerShell",
+    "Octopus.Action.Script.ScriptSource": "Inline",
+    "Octopus.Action.RunOnServer": "false",
+    "Octopus.Action.Script.ScriptBody": "$configPath = (Get-Item -Path $webConfigPath).FullName\n[xml]$urlRewriteSection = @\"\n<rewrite>\n    <rules>\n       <rule name=\"RedirectToHttps\" stopProcessing=\"true\">\n          <match url=\"(.*)\" ignoreCase=\"true\" />\n          <conditions>\n            <add input=\"{HTTP_X_FORWARDED_PROTO}\" pattern=\"^http$\" ignoreCase=\"true\" />\n          </conditions>\n          <action type=\"Redirect\" url=\"https://{HTTP_HOST}/{R:1}\" redirectType=\"Permanent\" />\n        </rule>\n    </rules>\n</rewrite>\n\"@\n\n\nWrite-Verbose \"Ammending $configPath\"\n[xml]$xml = [xml](Get-Content -Path $configPath)\n\nWrite-Verbose \"Current Config:\"\n$sw = New-Object System.Io.Stringwriter\n$writer=New-Object System.Xml.XmlTextWriter($sw)\n$writer.Formatting = [System.Xml.Formatting]::Indented\n$xml.WriteContentTo($writer)\n$sw.ToString()\n\n\nif($xml.SelectSingleNode(\"//configuration//system.webServer\") -eq $null)\n{\n    [System.Xml.XmlElement]$missingElement = $xml.CreateElement(\"system.webServer\")\n    $xml.SelectSingleNode(\"//configuration\").AppendChild($missingElement)\n}\n$xml.configuration[\"system.webServer\"].AppendChild($xml.ImportNode($urlRewriteSection.rewrite, $true))\n$xml.Save($configPath)\n\n$sw = New-Object System.Io.Stringwriter\n$writer=New-Object System.Xml.XmlTextWriter($sw)\n$writer.Formatting = [System.Xml.Formatting]::Indented\n$xml.WriteContentTo($writer)\n$sw.ToString()",
+    "Octopus.Action.Script.ScriptFileName": null,
+    "Octopus.Action.Package.FeedId": null,
+    "Octopus.Action.Package.PackageId": null
+  },
+  "Parameters": [
+    {
+      "Id": "c82b912e-1329-4c2e-ab98-2b0e588fcbe9",
+      "Name": "webConfigPath",
+      "Type": "String",
+      "Label": "Web Config Path",
+      "HelpText": "The path of the configuration file",
+      "DefaultValue": "",
+      "DisplaySettings": {
+        "Octopus.ControlType": "SingleLineText"
+      },
+      "Links": {}
+    }
+  ],
+  "$Meta": {
+    "ExportedAt": "2017-06-05T13:08:30.138Z",
+    "OctopusVersion": "3.11.6",
+    "Type": "ActionTemplate"
+  }
+}
