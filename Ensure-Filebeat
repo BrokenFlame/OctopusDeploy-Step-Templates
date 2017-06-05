@@ -1,0 +1,73 @@
+function Ensure-FileBeatInstalled
+{
+    [CmdletBinding()]
+    Param
+    (
+    )
+    Process
+    {
+        $filebeatsvc = Get-Service | Where {$_.Name -eq "filebeat"}
+        if(!($filebeatsvc))
+        {
+            [string]$redistDir = Join-Path $env:SystemDrive -ChildPath Redist
+            if(!(Test-Path -Path $redistDir))
+            {
+                MKDIR $redistDir
+            }
+            $url = "https://artifacts.elastic.co/downloads/beats/filebeat/filebeat-5.2.2-windows-x86_64.zip"
+            $uri = "C:\Redist\filebeat-5.2.2-windows-x86_64.zip"
+            $webclient = New-Object -TypeName System.Net.WebClient
+            if(Test-Path $webclient)
+            {
+                Write-Verbose "The file already exists."
+            }
+            else
+            {
+                $webclient.DownloadFile($url, $uri)
+            }
+
+            $filebeatsDir = Join-Path -Path $env:ProgramFiles -ChildPath filebeat
+            if(!(Test-Path -Path $filebeatsDir))
+            {
+                MKDIR $filebeatsDir
+            }
+
+            Add-Type -AssemblyName "System.IO.Compression.FileSystem"
+            Add-Type -AssemblyName "System.IO.Compression"
+            [System.IO.Compression.ZipArchive]$ZipArchive = [System.IO.Compression.ZipFile]::OpenRead($uri)
+
+            foreach($item in $ZipArchive.Entries)
+            {
+                $outFile = Join-Path -Path $filebeatsDir -ChildPath $item.Name
+                if(!([System.String]::IsNullOrWhiteSpace($item.Name)))
+                {
+                    [System.IO.Compression.ZipFileExtensions]::ExtractToFile($item, $outFile, $true)
+                }
+            }
+            New-Service -name filebeat -displayName filebeat -binaryPathName "`"$filebeatsDir\filebeat.exe`" -c `"$filebeatsDir\filebeat.yml`" -path.home `"$filebeatsDir`" -path.data `"$($env:SystemDrive)\ProgramData\filebeat`""
+            #Start filebeats if registered as a service
+            $filebeatsvc = Get-Service | Where {$_.Name -eq "filebeat"}
+            if($filebeatsvc)
+            {
+                $sw = [Diagnostics.Stopwatch]::StartNew()
+                while ($filebeatsvc.Status -ne "Stopped" -and $sw.ElapsedMilliseconds -le 10000)
+                {
+                    Start-Sleep -s 1
+                    Write-Verbose "Waiting for the FileBeat Service to Stop..."
+                }
+                $filebeatsvc.Start()
+                $sw.Stop()
+                $sw = $null
+            }
+            else
+            {
+                Write-Error "FileBeat is not registered as a service."
+            }
+        }
+    }
+    End
+    {
+    }
+}
+
+Ensure-FileBeatInstalled
